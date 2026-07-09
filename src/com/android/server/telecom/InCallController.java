@@ -106,6 +106,22 @@ public class InCallController extends CallsManagerListenerBase implements
     private static final VibrationAttributes VIBRATION_INCALL_ATTRIBUTES =
             new VibrationAttributes.Builder().setUsage(VibrationAttributes.USAGE_ACCESSIBILITY).build();
 
+    private static final long[] CALL_STATE_DZZZ_DA_VIBRATION_PATTERN = {
+            0,
+            250,
+            120,
+            50,
+    };
+
+    private static final int[] CALL_STATE_DZZZ_DA_VIBRATION_AMPLITUDE = {
+            0,
+            160,
+            0,
+            160,
+    };
+
+    private static final int CALL_STATE_VIBRATION_REPEAT = -1;
+
     /**
      * Anomaly Report UUIDs and corresponding error descriptions specific to InCallController.
      */
@@ -1769,11 +1785,11 @@ public class InCallController extends CallsManagerListenerBase implements
                 (newState == CallState.ACTIVE || newState == CallState.ANSWERED)) {
             boolean vibrateOnConnect = Settings.System.getIntForUser(mContext.getContentResolver(),
                 Settings.System.VIBRATE_ON_CONNECT, 0, UserHandle.USER_CURRENT) == 1;
-            if (vibrateOnConnect) vibrate(100, 200, 0);
+            if (vibrateOnConnect) vibrateDzzzDa();
         } else if (oldState == CallState.ACTIVE && newState == CallState.DISCONNECTED) {
             boolean vibrateOnDisconnect = Settings.System.getIntForUser(mContext.getContentResolver(),
                 Settings.System.VIBRATE_ON_DISCONNECT, 0, UserHandle.USER_CURRENT) == 1;
-            if (vibrateOnDisconnect) vibrate(100, 200, 0);
+            if (vibrateOnDisconnect) vibrateDzzzDa();
         }
 
         // TODO(b/394367444): If a call moves to local voicemail state, we can remove it from the
@@ -1781,6 +1797,10 @@ public class InCallController extends CallsManagerListenerBase implements
         // as an active call in the dialer, which is not the final desired state.
         // This will take the same general shape as the logic above in onExternalCallChanged.
         updateCall(call);
+    }
+
+    private void vibrateDzzzDa() {
+        vibrate(CALL_STATE_DZZZ_DA_VIBRATION_PATTERN, CALL_STATE_DZZZ_DA_VIBRATION_AMPLITUDE);
     }
 
     public void vibrate(int v1, int p1, int v2) {
@@ -1791,6 +1811,14 @@ public class InCallController extends CallsManagerListenerBase implements
             };
             vibrator.vibrate(
                 VibrationEffect.createWaveform(pattern, -1), VIBRATION_INCALL_ATTRIBUTES);
+        }
+    }
+
+    public void vibrate(long[] pattern, int[] amplitudes) {
+        Vibrator vibrator = (Vibrator) mContext.getSystemService(Context.VIBRATOR_SERVICE);
+        if (vibrator != null && vibrator.hasVibrator()) {
+            vibrator.vibrate(VibrationEffect.createWaveform(pattern, amplitudes,
+                    CALL_STATE_VIBRATION_REPEAT), VIBRATION_INCALL_ATTRIBUTES);
         }
     }
 
